@@ -1,0 +1,44 @@
+# docker compose up -d
+#
+# Two named volumes hold everything worth keeping across an image update
+# or container recreate: febarr-data (settings/queue/library/links --
+# small, just state.json) and febarr-exports (the actual exported/
+# downloaded files -- can get large; point this at a bind mount to a
+# real disk/NAS path instead if you'd rather manage that yourself, e.g.
+# "/mnt/media/febarr:/exports").
+#
+# FlareSolverr is optional (see the README's "FlareSolverr" section --
+# only needed if Febbox starts throwing Cloudflare challenges at you)
+# and off by default; bring it up alongside Febarr with:
+#   docker compose --profile flaresolverr up -d
+# and set Settings -> FlareSolverr URL to http://flaresolverr:8191/v1
+# (the service name, not localhost -- they're on the same compose network).
+services:
+  febarr:
+    build: .
+    # Or, once you're pulling a published image instead of building
+    # locally: image: yourname/febarr:latest
+    ports:
+      - "5000:5000"
+    environment:
+      # Only takes effect on a genuine first run (no state.json yet) --
+      # harmless if you never bring up the flaresolverr profile below,
+      # it just sits unused as an unreachable default like any other.
+      - FEBARR_DEFAULT_FLARESOLVERR_URL=http://flaresolverr:8191/v1
+    volumes:
+      - febarr-data:/data
+      - febarr-exports:/exports
+    restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    profiles: ["flaresolverr"]
+    environment:
+      - LOG_LEVEL=info
+    ports:
+      - "8191:8191"
+    restart: unless-stopped
+
+volumes:
+  febarr-data:
+  febarr-exports:

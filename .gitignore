@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+data/*
+!data/.gitkeep
+.venv/
+venv/
+.DS_Store
+Thumbs.db
+
+# Claude Code's per-machine local settings -- not shared project config.
+.claude/settings.local.json

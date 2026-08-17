@@ -1,0 +1,30 @@
+# Real, per-install data -- never belongs in an image layer. The
+# container gets its own via FEBARR_DATA_DIR=/data (see Dockerfile) and
+# a mounted volume (see docker-compose.yml), populated fresh on first run.
+data/
+
+# Windows-only standalone FlareSolverr binary some devs run locally --
+# unrelated to the container image (Docker users run the official
+# flaresolverr/flaresolverr image instead, see docker-compose.yml).
+flaresolverr/
+
+# The original one-shot CLI script -- not part of the web app the
+# container runs.
+febbox_export.py
+
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.git/
+.gitignore
+.claude/
+.dockerignore
+Dockerfile
+docker-compose.yml
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+.DS_Store

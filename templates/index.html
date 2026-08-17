@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Febarr</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-left">
+        <button type="button" class="header-brand" id="sidebar-toggle" aria-label="Toggle sidebar" title="Toggle sidebar">
+          <img class="brand-logo" src="{{ url_for('static', filename='icon.png') }}" alt="Febarr">
+        </button>
+        <form id="global-search-form" class="header-search">
+          <span class="material-symbols-outlined header-search-icon">search</span>
+          <input type="text" id="global-search-input" placeholder="Search">
+        </form>
+      </div>
+    </header>
+
+    <div class="body-row">
+      <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+      <aside class="sidebar">
+        <nav class="nav">
+          <a class="nav-item" data-page="movies"><span class="material-symbols-outlined nav-icon">movie</span> Movies</a>
+          <a class="nav-item" data-page="series"><span class="material-symbols-outlined nav-icon">live_tv</span> Series</a>
+          <a class="nav-item active" data-page="activity"><span class="material-symbols-outlined nav-icon">sync</span> Activity</a>
+          <a class="nav-item" data-page="downloads"><span class="material-symbols-outlined nav-icon">download</span> Downloads</a>
+          <a class="nav-item" data-page="links"><span class="material-symbols-outlined nav-icon">link</span> Links</a>
+          <a class="nav-item" data-page="logs"><span class="material-symbols-outlined nav-icon">receipt_long</span> Logs</a>
+          <a class="nav-item" data-page="settings" id="nav-settings"><span class="material-symbols-outlined nav-icon">settings</span> Settings</a>
+          <div class="nav-subgroup" id="settings-subnav">
+            <a class="nav-subitem active" data-settings-tab="connections">Connections</a>
+            <a class="nav-subitem" data-settings-tab="library">Library</a>
+            <a class="nav-subitem" data-settings-tab="advanced">Advanced</a>
+            <a class="nav-subitem" data-settings-tab="account">Account</a>
+          </div>
+        </nav>
+        {% if auth_configured %}
+        <div class="sidebar-foot">
+          <form method="post" action="{{ url_for('logout') }}">
+            <button type="submit" class="btn btn-ghost btn-small"><span class="material-symbols-outlined icon-inline">logout</span>Log out</button>
+          </form>
+        </div>
+        {% endif %}
+      </aside>
+
+      <div class="main">
+        <div id="search-results-panel" class="panel hidden">
+          <span id="search-status" class="hint"></span>
+          <div id="search-results-list" class="search-results-list hidden"></div>
+        </div>
+
+      <div class="toolbar">
+        <div class="toolbar-group" data-toolbar="activity">
+          <button type="button" class="btn btn-ghost" id="queue-pause-btn"><span class="material-symbols-outlined icon-inline" id="queue-pause-icon">pause</span><span id="queue-pause-label">Pause queue</span></button>
+          <button type="button" class="btn btn-ghost" id="queue-select-btn" title="Select items" aria-label="Select items"><span class="material-symbols-outlined icon-inline">checklist</span>Select</button>
+          <div class="toolbar-sep"></div>
+          <select id="queue-filter-bar" title="Status filter">
+            <option value="active">Active</option>
+            <option value="running">Running</option>
+            <option value="queued">Queued</option>
+            <option value="background">Background</option>
+            <option value="completed">Completed</option>
+            <option value="rejected">Rejected</option>
+            <option value="all">All</option>
+          </select>
+          <select id="queue-type-filter-bar" title="Type filter">
+            <option value="all">All types</option>
+            <option value="movie">Movies</option>
+            <option value="series">Series</option>
+          </select>
+          <div class="toolbar-sep"></div>
+          <select id="queue-page-size" title="Rows per page">
+            <option value="10">10 / page</option>
+            <option value="20" selected>20 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+          </select>
+          <span class="hint" id="queue-status-text"></span>
+        </div>
+
+        <div class="toolbar-group hidden" data-toolbar="downloads">
+          <button type="button" class="btn btn-ghost" id="downloads-pause-btn"><span class="material-symbols-outlined icon-inline" id="downloads-pause-icon">pause</span><span id="downloads-pause-label">Pause queue</span></button>
+          <button type="button" class="btn btn-ghost" id="downloads-select-btn" title="Select items" aria-label="Select items"><span class="material-symbols-outlined icon-inline">checklist</span>Select</button>
+          <div class="toolbar-sep"></div>
+          <select id="downloads-filter-bar" title="Status filter">
+            <option value="active">Active</option>
+            <option value="running">Downloading</option>
+            <option value="queued">Queued</option>
+          </select>
+          <select id="downloads-type-filter-bar" title="Type filter">
+            <option value="all">All types</option>
+            <option value="movie">Movies</option>
+            <option value="series">Series</option>
+          </select>
+          <div class="toolbar-sep"></div>
+          <select id="downloads-page-size" title="Rows per page">
+            <option value="10">10 / page</option>
+            <option value="20" selected>20 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+          </select>
+          <span class="hint" id="downloads-status-text"></span>
+        </div>
+
+        <div class="toolbar-group hidden" data-toolbar="movies">
+          <div class="toolbar-dropdown-btn btn btn-small btn-ghost" id="movies-filter-wrap" title="Filter by status">
+            <span class="material-symbols-outlined icon-inline">filter_list</span>
+            <span>Filter</span>
+            <select id="movies-status-filter-bar" title="Status filter">
+              <option value="all">All status</option>
+              <option value="ready">Ready</option>
+              <option value="downloaded">Downloaded</option>
+              <option value="downloading">Downloading</option>
+              <option value="running">Exporting</option>
+              <option value="queued">Queued</option>
+              <option value="discovered">Discovered</option>
+              <option value="error">Error</option>
+            </select>
+          </div>
+          <div class="toolbar-dropdown-btn btn btn-small btn-ghost" id="movies-sort-wrap" title="Sort by">
+            <span class="material-symbols-outlined icon-inline">sort</span>
+            <span>Sort</span>
+            <select id="movies-grid-sort" title="Sort by">
+              <option value="status">Status</option>
+              <option value="title">Title</option>
+              <option value="category">Category</option>
+              <option value="year">Year</option>
+              <option value="files">Files</option>
+            </select>
+          </div>
+          <div class="toolbar-dropdown-btn btn btn-small btn-ghost" id="movies-view-wrap" title="View mode">
+            <span class="material-symbols-outlined icon-inline">grid_view</span>
+            <span>View</span>
+            <select id="movies-view-select" title="View mode">
+              <option value="table">Table</option>
+              <option value="grid">Grid</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-small btn-ghost" id="movies-select-btn" title="Select items" aria-label="Select items"><span class="material-symbols-outlined icon-inline">checklist</span>Select</button>
+          <div class="column-picker-wrap" id="movies-columns-wrap">
+            <button type="button" class="btn btn-small btn-ghost" id="movies-columns-btn" title="Choose columns" aria-label="Choose columns"><span class="material-symbols-outlined icon-inline">view_column</span>Columns</button>
+            <div class="column-picker hidden" id="movies-column-picker"></div>
+          </div>
+          <span class="hint" id="movies-status"></span>
+        </div>
+
+        <div class="toolbar-group hidden" data-toolbar="series">
+          <div class="toolbar-dropdown-btn btn btn-small btn-ghost" id="series-filter-wrap" title="Filter by status">
+            <span class="material-symbols-outlined icon-inline">filter_list</span>
+            <span>Filter</span>
+            <select id="series-status-filter-bar" title="Status filter">
+              <option value="all">All status</option>
+              <option value="ready">Ready</option>
+              <option value="downloaded">Downloaded</option>
+              <option value="downloading">Downloading</option>
+              <option value="running">Exporting</option>
+              <option value="queued">Queued</option>
+              <option value="discovered">Discovered</option>
+              <option value="error">Error</option>
+            </select>
+          </div>
+          <div class="toolbar-dropdown-btn btn btn-small btn-ghost" id="series-sort-wrap" title="Sort by">
+            <span class="material-symbols-outlined icon-inline">sort</span>
+            <span>Sort</span>
+            <select id="series-grid-sort" title="Sort by">
+              <option value="status">Status</option>
+              <option value="title">Title</option>
+              <option value="category">Category</option>
+              <option value="year">Year</option>
+              <option value="files">Episodes</option>
+            </select>
+          </div>
+          <div class="toolbar-dropdown-btn btn btn-small btn-ghost" id="series-view-wrap" title="View mode">
+            <span class="material-symbols-outlined icon-inline">grid_view</span>
+            <span>View</span>
+            <select id="series-view-select" title="View mode">
+              <option value="table">Table</option>
+              <option value="grid">Grid</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-small btn-ghost" id="series-select-btn" title="Select items" aria-label="Select items"><span class="material-symbols-outlined icon-inline">checklist</span>Select</button>
+          <div class="column-picker-wrap" id="series-columns-wrap">
+            <button type="button" class="btn btn-small btn-ghost" id="series-columns-btn" title="Choose columns" aria-label="Choose columns"><span class="material-symbols-outlined icon-inline">view_column</span>Columns</button>
+            <div class="column-picker hidden" id="series-column-picker"></div>
+          </div>
+          <span class="hint" id="series-status"></span>
+        </div>
+
+        <div class="toolbar-group hidden" data-toolbar="links">
+          <button type="button" class="btn btn-ghost" id="links-refresh-btn"><span class="material-symbols-outlined icon-inline">refresh</span>Refresh</button>
+          <span class="hint" id="links-status"></span>
+        </div>
+
+        <div class="toolbar-group hidden" data-toolbar="media-detail">
+          <button type="button" class="btn btn-ghost" id="media-back-btn"><span class="material-symbols-outlined icon-inline">arrow_back</span>Back</button>
+          <div class="toolbar-sep"></div>
+          <button type="button" class="btn btn-ghost" id="media-refresh-btn"><span class="material-symbols-outlined icon-inline">refresh</span>Refresh metadata</button>
+          <button type="button" class="btn btn-danger" id="media-delete-btn"><span class="material-symbols-outlined icon-inline">delete</span>Delete</button>
+          <span class="hint" id="media-detail-status"></span>
+        </div>
+
+        <div class="toolbar-group hidden" data-toolbar="logs">
+          <div class="filter-bar" id="logs-filter-bar">
+            <button type="button" class="btn btn-small filter-btn" data-filter="active"><span class="material-symbols-outlined icon-xs">bolt</span>Active</button>
+            <button type="button" class="btn btn-small filter-btn" data-filter="completed"><span class="material-symbols-outlined icon-xs">check_circle</span>Completed</button>
+            <button type="button" class="btn btn-small filter-btn" data-filter="all"><span class="material-symbols-outlined icon-xs">apps</span>All</button>
+          </div>
+          <div class="filter-bar" id="logs-type-filter-bar">
+            <button type="button" class="btn btn-small filter-btn" data-type-filter="all"><span class="material-symbols-outlined icon-xs">apps</span>All types</button>
+            <button type="button" class="btn btn-small filter-btn" data-type-filter="movie"><span class="material-symbols-outlined icon-xs">movie</span>Movies</button>
+            <button type="button" class="btn btn-small filter-btn" data-type-filter="series"><span class="material-symbols-outlined icon-xs">live_tv</span>Series</button>
+          </div>
+          <div class="toolbar-sep"></div>
+          <select id="logs-page-size" title="Rows per page">
+            <option value="10">10 / page</option>
+            <option value="20" selected>20 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+          </select>
+        </div>
+
+        <div class="toolbar-group hidden" data-toolbar="log-detail">
+          <button type="button" class="btn btn-ghost" id="log-detail-back-btn"><span class="material-symbols-outlined icon-inline">arrow_back</span>Back</button>
+        </div>
+
+        <div class="toolbar-group hidden" data-toolbar="settings">
+          <button type="button" class="btn btn-primary" id="header-save-settings-btn"><span class="material-symbols-outlined icon-inline">save</span>Save settings</button>
+          <span class="hint" id="header-settings-save-status"></span>
+        </div>
+      </div>
+
+      <div class="content">
+        <section class="page" id="page-movies">
+          <div class="bulk-bar hidden" id="movies-bulk-bar">
+            <span class="hint" id="movies-bulk-count"></span>
+            <div class="row wrap">
+              <button type="button" class="btn btn-small btn-ghost" data-bulk="select-all" title="Select all filtered" aria-label="Select all filtered"><span class="material-symbols-outlined icon-inline">select_all</span>Select all</button>
+              <button type="button" class="btn btn-small btn-ghost" data-bulk="queue" title="Queue" aria-label="Queue"><span class="material-symbols-outlined icon-inline">add</span>Queue</button>
+              <button type="button" class="btn btn-small btn-ghost" data-bulk="download" title="Download" aria-label="Download"><span class="material-symbols-outlined icon-inline">download</span>Download</button>
+              <button type="button" class="btn btn-small btn-ghost" data-bulk="cancel" title="Stop" aria-label="Stop"><span class="material-symbols-outlined icon-inline">stop</span>Stop</button>
+              <button type="button" class="btn btn-small btn-danger" data-bulk="remove" title="Delete" aria-label="Delete"><span class="material-symbols-outlined icon-inline">delete</span>Delete</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table data-table-custom" id="movies-table">
+              <colgroup id="movies-colgroup"></colgroup>
+              <thead>
+                <tr id="movies-thead-row"></tr>
+              </thead>
+              <tbody id="movies-table-body">
+                <tr><td class="hint">No movies found under the export root.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="media-grid hidden" id="movies-grid"></div>
+        </section>
+
+        <section class="page" id="page-series">
+          <div class="bulk-bar hidden" id="series-bulk-bar">
+            <span class="hint" id="series-bulk-count"></span>
+            <div class="row wrap">
+              <button type="button" class="btn btn-small btn-ghost" data-bulk="select-all" title="Select all filtered" aria-label="Select all filtered"><span class="material-symbols-outlined icon-inline">select_all</span>Select all</button>
+              <button type="button" class="btn btn-small btn-ghost" data-bulk="queue" title="Queue" aria-label="Queue"><span class="material-symbols-outlined icon-inline">add</span>Queue</button>
+              <button type="button" class="btn btn-small btn-ghost" data-bulk="download" title="Download" aria-label="Download"><span class="material-symbols-outlined icon-inline">download</span>Download</button>
+              <button type="button" class="btn btn-small btn-ghost" data-bulk="cancel" title="Stop" aria-label="Stop"><span class="material-symbols-outlined icon-inline">stop</span>Stop</button>
+              <button type="button" class="btn btn-small btn-danger" data-bulk="remove" title="Delete" aria-label="Delete"><span class="material-symbols-outlined icon-inline">delete</span>Delete</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table data-table-custom" id="series-table">
+              <colgroup id="series-colgroup"></colgroup>
+              <thead>
+                <tr id="series-thead-row"></tr>
+              </thead>
+              <tbody id="series-table-body">
+                <tr><td class="hint">No series found under the export root.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="media-grid hidden" id="series-grid"></div>
+        </section>
+
+        <section class="page active" id="page-activity">
+          <div class="bulk-bar hidden" id="activity-bulk-bar">
+            <span class="hint" id="activity-bulk-count"></span>
+            <div class="row wrap">
+              <button type="button" class="btn btn-small btn-ghost" id="bulk-select-all-btn" title="Select all filtered" aria-label="Select all filtered"><span class="material-symbols-outlined icon-inline">select_all</span>Select all</button>
+              <button type="button" class="btn btn-small btn-ghost" id="bulk-cancel-btn" title="Stop" aria-label="Stop"><span class="material-symbols-outlined icon-inline">stop</span>Stop</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="q-select-cell"><input type="checkbox" id="queue-select-all-checkbox" title="Select all filtered"></th>
+                  <th>Status</th>
+                  <th>Item</th>
+                  <th>Type</th>
+                  <th>Progress</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="task-table-body">
+                <tr><td colspan="6" class="hint">Nothing queued yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="row space-between" style="margin-top: 10px;">
+            <span id="queue-page-info" class="hint"></span>
+            <div class="row">
+              <button type="button" class="btn btn-small btn-ghost" id="queue-prev-btn" title="Previous page" aria-label="Previous page"><span class="material-symbols-outlined">chevron_left</span></button>
+              <button type="button" class="btn btn-small btn-ghost" id="queue-next-btn" title="Next page" aria-label="Next page"><span class="material-symbols-outlined">chevron_right</span></button>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-downloads">
+          <div class="bulk-bar hidden" id="downloads-bulk-bar">
+            <span class="hint" id="downloads-bulk-count"></span>
+            <div class="row wrap">
+              <button type="button" class="btn btn-small btn-ghost" id="downloads-bulk-select-all-btn" title="Select all filtered" aria-label="Select all filtered"><span class="material-symbols-outlined icon-inline">select_all</span>Select all</button>
+              <button type="button" class="btn btn-small btn-ghost" id="downloads-bulk-cancel-btn" title="Stop" aria-label="Stop"><span class="material-symbols-outlined icon-inline">stop</span>Stop</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="q-select-cell"><input type="checkbox" id="downloads-select-all-checkbox" title="Select all filtered"></th>
+                  <th>Status</th>
+                  <th>Item</th>
+                  <th>Type</th>
+                  <th>Progress</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="downloads-table-body">
+                <tr><td colspan="6" class="hint">Nothing downloading yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="row space-between" style="margin-top: 10px;">
+            <span id="downloads-page-info" class="hint"></span>
+            <div class="row">
+              <button type="button" class="btn btn-small btn-ghost" id="downloads-prev-btn" title="Previous page" aria-label="Previous page"><span class="material-symbols-outlined">chevron_left</span></button>
+              <button type="button" class="btn btn-small btn-ghost" id="downloads-next-btn" title="Next page" aria-label="Next page"><span class="material-symbols-outlined">chevron_right</span></button>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-links">
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Link</th>
+                  <th>Added</th>
+                  <th>Last checked</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="links-table-body">
+                <tr><td colspan="4" class="hint">No saved links yet -- paste a Febbox share link in the search bar to add one.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page" id="page-logs">
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Item</th>
+                  <th>Type</th>
+                  <th>Progress</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="logs-table-body">
+                <tr><td colspan="5" class="hint">No logs yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="row space-between" style="margin-top: 10px;">
+            <span id="logs-page-info" class="hint"></span>
+            <div class="row">
+              <button type="button" class="btn btn-small btn-ghost" id="logs-prev-btn" title="Previous page" aria-label="Previous page"><span class="material-symbols-outlined">chevron_left</span></button>
+              <button type="button" class="btn btn-small btn-ghost" id="logs-next-btn" title="Next page" aria-label="Next page"><span class="material-symbols-outlined">chevron_right</span></button>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-log-detail">
+          <div class="panel">
+            <h2 id="log-detail-title">&nbsp;</h2>
+            <div class="hint" id="log-detail-meta"></div>
+          </div>
+          <pre class="task-log log-detail-log" id="log-detail-content"></pre>
+        </section>
+
+        <section class="page" id="page-media-detail">
+          <div class="media-detail-hero" id="media-detail-hero">
+            <div class="media-detail-hero-scrim"></div>
+            <div class="media-detail-hero-content">
+              <h2 id="media-detail-title">&nbsp;</h2>
+              <div class="hint" id="media-detail-meta"></div>
+              <div class="media-detail-path" id="media-detail-path-row">
+                <span class="material-symbols-outlined icon-xs">folder</span>
+                <span class="media-detail-path-label" id="media-detail-path-label"></span>
+                <span class="media-detail-path-text" id="media-detail-path-text"></span>
+                <input type="text" id="media-detail-path-input" class="hidden" autocomplete="off">
+                <button type="button" class="btn btn-icon btn-small" id="media-detail-path-edit-btn" title="Rename folder"><span class="material-symbols-outlined icon-xs">edit</span></button>
+                <button type="button" class="btn btn-icon btn-small hidden" id="media-detail-path-save-btn" title="Save"><span class="material-symbols-outlined icon-xs">check</span></button>
+                <button type="button" class="btn btn-icon btn-small hidden" id="media-detail-path-cancel-btn" title="Cancel"><span class="material-symbols-outlined icon-xs">close</span></button>
+              </div>
+              <p class="hint" id="media-detail-overview"></p>
+            </div>
+          </div>
+          <div class="panel hidden" id="media-detail-download"></div>
+          <div id="media-detail-seasons"></div>
+          <div id="media-detail-files"></div>
+        </section>
+
+        <section class="page" id="page-settings">
+          <div class="settings-subpage active" id="settings-tab-connections">
+            <form id="settings-form-connections" class="settings-form">
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">cookie</span>Febbox login cookie
+                  <div class="hint" id="login_cookie_status"></div>
+                </div>
+                <div class="setting-control">
+                  <input type="text" id="login_cookie" name="login_cookie" autocomplete="off">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">key</span>TMDB API key
+                  <div class="hint" id="tmdb_api_key_status"></div>
+                </div>
+                <div class="setting-control">
+                  <input type="text" id="tmdb_api_key" name="tmdb_api_key" autocomplete="off">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">vpn_lock</span>FlareSolverr URL</div>
+                <div class="setting-control">
+                  <input type="text" id="flaresolverr_url" name="flaresolverr_url" placeholder="http://localhost:8191/v1">
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="settings-subpage" id="settings-tab-library">
+            <form id="settings-form-library" class="settings-form">
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">calendar_month</span>Minimum release year</div>
+                <div class="setting-control">
+                  <input type="number" id="min_release_year" name="min_release_year" min="0" max="2100" value="0">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">event_busy</span>Year in series folder names
+                  <div class="hint">Off drops the year from TV/Anime folders ("Show Name" instead of "Show Name (2015)"). Movies always keep theirs.</div>
+                </div>
+                <div class="setting-control">
+                  <input type="checkbox" id="series_year_in_folder" name="series_year_in_folder">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">bolt</span>Auto-queue discovered items
+                  <div class="hint">Skip the manual "Queue" click -- every confident match starts exporting right away.</div>
+                </div>
+                <div class="setting-control">
+                  <input type="checkbox" id="auto_queue_discovered" name="auto_queue_discovered">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">folder_open</span>Export root</div>
+                <div class="setting-control">
+                  <input type="text" id="export_root" name="export_root" placeholder="~/Media">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">speed</span>Max parallel exports</div>
+                <div class="setting-control">
+                  <input type="number" id="max_parallel_workers" name="max_parallel_workers" min="1" value="2">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">downloading</span>Max parallel downloads</div>
+                <div class="setting-control">
+                  <input type="number" id="max_parallel_downloads" name="max_parallel_downloads" min="1" value="1">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">update</span>Resync stream age (days)</div>
+                <div class="setting-control">
+                  <input type="number" id="resync_stale_days" name="resync_stale_days" min="0" max="365" step="0.5" value="0">
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="settings-subpage" id="settings-tab-advanced">
+            <form id="settings-form-advanced" class="settings-form">
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">timer</span>Network timeout (s)</div>
+                <div class="setting-control">
+                  <input type="number" id="request_timeout_seconds" name="request_timeout_seconds" min="5" max="120" value="20">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">replay</span>Max retries</div>
+                <div class="setting-control">
+                  <input type="number" id="max_retries" name="max_retries" min="0" max="10" value="5">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">account_tree</span>Max folder depth</div>
+                <div class="setting-control">
+                  <input type="number" id="max_folder_depth" name="max_folder_depth" min="1" max="50" value="8">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">dns</span>Custom User-Agent</div>
+                <div class="setting-control">
+                  <input type="text" id="user_agent" name="user_agent" placeholder="default">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">refresh</span>Queue poll interval (s)</div>
+                <div class="setting-control">
+                  <input type="number" id="queue_poll_seconds" name="queue_poll_seconds" min="1" max="30" step="0.5" value="1.5">
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="settings-subpage" id="settings-tab-account">
+            <form id="account-form">
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">info</span>Status</div>
+                <div class="setting-control">
+                  <span id="account-configured-status"></span>
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">person</span>Username</div>
+                <div class="setting-control">
+                  <input type="text" id="account_username" name="username" autocomplete="off">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">lock</span>New password</div>
+                <div class="setting-control">
+                  <input type="password" id="account_password" name="password" autocomplete="new-password">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label"><span class="material-symbols-outlined icon-inline">lock_reset</span>Confirm new password</div>
+                <div class="setting-control">
+                  <input type="password" id="account_confirm_password" name="confirm_password" autocomplete="new-password">
+                </div>
+              </div>
+              <div class="row" style="margin-top: 14px;">
+                <button type="button" class="btn btn-ghost" id="disable-account-btn"><span class="material-symbols-outlined icon-inline">lock_open</span>Disable login</button>
+                <span id="account-save-status" class="hint"></span>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <template id="queue-row-template">
+    <tr class="queue-row">
+      <td class="q-select-cell"><input type="checkbox" class="q-row-select"></td>
+      <td><span class="q-status-badge status-badge"></span></td>
+      <td>
+        <div class="q-title"></div>
+        <div class="q-meta hint"></div>
+      </td>
+      <td><span class="q-type-tag"></span></td>
+      <td class="q-progress-cell">
+        <div class="progress-bar q-progress-bar hidden"><div class="progress-fill"></div></div>
+        <div class="q-progress-text hint"></div>
+      </td>
+      <td class="q-actions-cell">
+        <div class="row wrap q-actions"></div>
+      </td>
+    </tr>
+  </template>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

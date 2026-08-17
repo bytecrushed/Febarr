@@ -1,0 +1,1659 @@
+:root {
+  --bg: #202020;
+  --header: #2a2a2a;
+  --sidebar: #2a2a2a;
+  --toolbar: #262626;
+  --surface: #333;
+  --surface-hover: #414141;
+  --text: #fff;
+  --text-muted: #fff;
+  --text-disabled: rgba(255, 255, 255, 0.5);
+  /* One blue for the whole app -- the active-tab accent (was called
+     "brand"). --primary/--primary-dark/--input-focus used to be three
+     separate blues; they're now just this one (plus a darkened shade
+     for :hover) so nothing on screen competes with it. */
+  --brand: #35c5f4;
+  --primary: var(--brand);
+  --primary-dark: #2a9ec3;
+  --selected: #f9be03;
+  --success: #00853d;
+  --success-bright: #2ecc71;
+  --warning: #ffa500;
+  --danger: #f05050;
+  --border: #fff;
+  --border-light: #fff;
+  --input-bg: #1c1c1c;
+  --input-focus: var(--brand);
+  --radius: 4px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* -- icons (Material Symbols, fonts.google.com/icons) --------------------
+   Every icon in the app -- nav, row/bulk actions, sort indicators, toolbar
+   buttons -- is this one ligature-based font instead of unicode glyphs
+   standing in for icons. .icon-inline is for an icon sitting next to a
+   text label (Back, Save settings, ...); icon-only buttons (row/bulk
+   actions, view toggle, sort arrows) just use the bare class. */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: 200;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 200, "GRAD" 0, "opsz" 24;
+  vertical-align: middle;
+}
+
+.icon-inline {
+  font-size: 21px;
+}
+
+/* Smaller variant for icon+text inside already-small controls (filter
+   chips, sub-nav items) where an 18px icon would overpower the label. */
+.icon-xs {
+  font-size: 18px;
+}
+
+/* Browsers default headings to bold (700); Roboto's own weight steps
+   land at 400/500/700 (no reliable 600), so 500 -- not 600 -- is the
+   lightest step up from body text every browser can actually render
+   without silently falling back to 700. Elements below with their own
+   heavier weight (700/600) get pulled down to this same 500 so nothing
+   reads meaningfully bolder than a heading. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 500;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* -- app shell ------------------------------------------------------------
+   .header spans the full width at the top; everything below it (sidebar
+   + main) sits in .body-row, a second flex row that starts under the
+   header rather than beside it. ------------------------------------- */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.body-row {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  /* lets .content's own overflow-y:auto scroll instead of the whole page */
+}
+
+.sidebar {
+  width: 210px;
+  flex-shrink: 0;
+  background: var(--sidebar);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #fff;
+  transition: width 0.2s ease;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  overflow: hidden;
+  border-right: none;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+.nav {
+  padding: 10px 0;
+  flex: 1;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 0.92rem;
+  border-left: 3px solid transparent;
+}
+
+.nav-item .nav-icon {
+  width: 26px;
+  text-align: center;
+  color: #fff;
+  font-size: 24px;
+}
+
+.nav-item:hover {
+  background: var(--surface);
+  color: var(--primary);
+}
+
+.nav-item.active {
+  background: var(--surface);
+  border-left-color: var(--brand);
+  color: var(--primary);
+}
+
+.nav-item.active .nav-icon {
+  color: var(--brand);
+}
+
+/* -- settings sub-tabs: nested under the Settings nav item, collapsed to
+   nothing until Settings itself is the active page ------------------- */
+.nav-subgroup {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.18s ease;
+}
+
+.nav-subgroup.expanded {
+  max-height: 200px;
+}
+
+.nav-subitem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 38px;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  border-left: 3px solid transparent;
+}
+
+.nav-subitem:hover {
+  color: var(--primary);
+}
+
+.nav-subitem.active {
+  color: var(--primary);
+  border-left-color: var(--brand);
+}
+
+.sidebar-foot {
+  padding: 10px 14px;
+}
+
+.sidebar-foot .btn {
+  width: 100%;
+}
+
+/* -- main column ------------------------------------------------------------ */
+.main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  height: 60px;
+  flex-shrink: 0;
+  background: var(--header);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 24px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 178px;
+  flex: 1;
+  min-width: 0;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  outline: none;
+}
+
+.brand-logo {
+  height: 32px;
+  width: auto;
+  display: block;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.header-brand:hover .brand-logo {
+  opacity: 0.8;
+}
+
+.header-brand:active .brand-logo {
+  transform: scale(0.94);
+}
+
+.header-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.header-search-icon {
+  font-size: 24px;
+  color: var(--text-muted);
+  pointer-events: none;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-search input[type="text"],
+.header-search input {
+  margin: 0;
+  padding: 4px 2px !important;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #fff;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.toolbar {
+  min-height: 56px;
+  flex-shrink: 0;
+  background: var(--toolbar);
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow: visible;
+  gap: 12px;
+  padding: 6px 20px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+/* Everything inside a toolbar-group keeps its own natural width instead
+   of getting squeezed as the row fills up -- with wrapping off (above),
+   the toolbar scrolls horizontally past this point instead of ever
+   dropping to a second row. */
+.toolbar-group > * {
+  flex-shrink: 0;
+}
+
+.toolbar-sep {
+  width: 1px;
+  height: 32px;
+  align-self: center;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.toolbar-text {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  align-self: center;
+}
+
+/* Toolbar button layout: icon ABOVE text with larger icon size */
+.toolbar .btn,
+.toolbar .filter-bar .filter-btn,
+.toolbar .column-picker-wrap .btn,
+.toolbar .toolbar-dropdown-btn,
+.toolbar .toolbar-sort-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 2px;
+  padding: 4px 6px;
+  min-height: 44px;
+  font-size: 0.72rem;
+  line-height: 1.1;
+  background: transparent;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: none;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.toolbar .btn:hover,
+.toolbar .column-picker-wrap .btn:hover,
+.toolbar .toolbar-dropdown-btn:hover,
+.toolbar .toolbar-sort-wrap:hover {
+  opacity: 0.75;
+}
+
+/* Larger icons in toolbar */
+.toolbar .material-symbols-outlined,
+.toolbar .icon-inline,
+.toolbar .icon-xs {
+  font-size: 28px !important;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.toolbar .btn-icon {
+  width: auto;
+  min-width: 28px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 4px;
+  justify-content: center;
+}
+
+.toolbar .filter-bar {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.toolbar .filter-bar .filter-btn {
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  padding: 4px 4px 2px;
+  border-bottom: 2px solid transparent;
+  opacity: 0.7;
+}
+
+.toolbar .filter-bar .filter-btn:hover {
+  opacity: 1;
+}
+
+.toolbar .filter-bar .filter-btn.active {
+  opacity: 1;
+  font-weight: 500;
+  border-bottom: 2px solid #fff;
+}
+
+.toolbar select {
+  width: auto;
+  min-width: 75px;
+  max-width: 135px;
+  height: 28px;
+  min-height: 28px;
+  margin: 0;
+  padding: 2px 18px 2px 4px;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  align-self: center;
+  border: none;
+  border-radius: 0;
+  background: transparent url("data:image/svg+xml;utf8,<svg fill='white' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>") no-repeat right 2px center;
+  background-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  outline: none;
+  box-shadow: none;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.toolbar select:hover {
+  opacity: 0.75;
+}
+
+.toolbar select:focus {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+#queue-page-size,
+#logs-page-size {
+  width: 95px;
+}
+
+.toolbar-dropdown-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.toolbar-dropdown-btn span {
+  pointer-events: none;
+}
+
+.toolbar-dropdown-btn select {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  max-width: none;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  background: transparent !important;
+  background-image: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 0;
+  margin: 0;
+  z-index: 2;
+}
+
+.toolbar-dropdown-btn select:focus {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.toolbar-dropdown-btn select option {
+  background: #18181b;
+  color: #fff;
+  padding: 6px 12px;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+}
+
+.settings-subpage {
+  display: none;
+}
+
+.settings-subpage.active {
+  display: block;
+}
+
+.page-heading {
+  margin: 0 0 16px;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+
+/* -- panels / sections ------------------------------------------------------ */
+.panel {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 24px;
+}
+
+.panel-title {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* -- settings rows ---------------------------------------------------------- */
+.setting-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 0;
+}
+
+.setting-label {
+  font-size: 0.85rem;
+  color: var(--text);
+  flex-shrink: 0;
+  width: 260px;
+}
+
+.setting-control {
+  flex: 1;
+  max-width: 360px;
+}
+
+.setting-control input,
+.setting-control select {
+  width: 100%;
+}
+
+.help-text {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+label.grow {
+  flex: 1;
+  min-width: 220px;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select {
+  display: block;
+  width: 100%;
+  height: 36px;
+  margin-top: 5px;
+  padding: 4px 2px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #fff;
+  border-radius: 0;
+  color: #fff;
+  font-size: 0.92rem;
+  font-family: inherit;
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: transparent url("data:image/svg+xml;utf8,<svg fill='white' height='22' viewBox='0 0 24 24' width='22' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>") no-repeat right 2px center;
+  background-size: 18px;
+  padding-right: 22px;
+  cursor: pointer;
+}
+
+select option {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-bottom: 1px solid #fff;
+  box-shadow: none;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.row.wrap {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.row.space-between {
+  justify-content: space-between;
+}
+
+/* -- buttons ---------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  font-size: 0.82rem;
+  padding: 2px 6px;
+  border-radius: 0;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: #fff;
+  font-family: inherit;
+  box-shadow: none;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.btn:hover {
+  background: transparent;
+  color: #fff;
+  opacity: 0.75;
+}
+
+.btn:active {
+  opacity: 0.5;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.btn-primary {
+  background: transparent;
+  color: #fff;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background: transparent;
+  color: #fff;
+  opacity: 0.75;
+}
+
+.btn-success {
+  background: transparent;
+  color: #fff;
+}
+
+.btn-danger {
+  background: transparent;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: transparent;
+  color: #fff;
+  opacity: 0.75;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #fff;
+}
+
+.btn-ghost:hover {
+  background: transparent;
+  color: #fff;
+  opacity: 0.75;
+}
+
+.btn-small {
+  min-height: 24px;
+  padding: 1px 4px;
+  font-size: 0.76rem;
+}
+
+/* Icon-only action buttons (row/bulk actions across Activity, Logs,
+   Movies/Series) -- no bounding box, pure white glyphs */
+.btn-icon {
+  width: auto;
+  min-width: 24px;
+  padding: 0 2px;
+  justify-content: center;
+  font-size: 1.15rem;
+  line-height: 1;
+  background: transparent;
+  color: #fff;
+}
+
+.btn-icon:hover {
+  background: transparent;
+  color: #fff;
+  opacity: 0.75;
+}
+
+/* -- toggle-button groups (filter bars) -------------------------------------- */
+.filter-bar {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.filter-bar .filter-btn {
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 2px 2px;
+  border-bottom: 2px solid transparent;
+}
+
+.filter-bar .filter-btn:hover {
+  background: transparent;
+  color: #fff;
+  opacity: 1;
+}
+
+.filter-bar .filter-btn.active {
+  background: transparent;
+  color: #fff;
+  font-weight: 500;
+  border-bottom: 2px solid #fff;
+  opacity: 1;
+}
+
+/* -- status text -------------------------------------------------------- */
+/* Plain colored text, not a pill -- the color alone carries the status. */
+.status-badge {
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-queued,
+.status-missing {
+  color: #fff;
+}
+
+.status-running,
+.status-searching,
+.status-downloading {
+  color: var(--primary);
+}
+
+.status-done,
+.status-found,
+.status-owned,
+.status-downloaded,
+.status-ready {
+  color: var(--success-bright);
+}
+
+.status-error,
+.status-download_error {
+  color: var(--danger);
+}
+
+.status-download_queued {
+  color: #fff;
+}
+
+.status-denied,
+.status-missing {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.status-discovered {
+  color: #fff;
+}
+
+.toolbar .btn.active,
+.toolbar .btn.is-active {
+  color: var(--brand) !important;
+}
+
+/* -- bulk selection ----------------------------------------------------- */
+.q-select-cell,
+th.q-select-cell,
+.q-select-col,
+.media-card-select {
+  display: none !important;
+}
+
+.selection-active .q-select-cell,
+.selection-active th.q-select-cell {
+  display: table-cell !important;
+}
+
+.selection-active .q-select-col {
+  display: table-column !important;
+}
+
+.selection-active .media-card-select {
+  display: block !important;
+}
+
+.q-select-cell {
+  width: 32px;
+  text-align: center;
+}
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0;
+  margin-bottom: 10px;
+  background: transparent;
+  border-bottom: 1px solid #fff;
+  border-radius: 0;
+}
+
+.bulk-bar .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+/* -- tables ------------------------------------------------------------------ */
+.table-scroll {
+  overflow-x: auto;
+  border-radius: 0;
+  background: transparent;
+}
+
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  background: transparent;
+}
+
+table.data-table th,
+table.data-table td {
+  text-align: left;
+  padding: 0 14px;
+  vertical-align: middle;
+  border-bottom: 1px solid #fff;
+  height: 48px;
+}
+
+table.data-table thead th {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #fff;
+  background: transparent;
+  border-bottom: 1px solid #fff;
+  height: 38px;
+}
+
+table.data-table tbody tr:last-child td {
+  border-bottom: 1px solid #fff;
+}
+
+/* Long single-line text (e.g. a full share URL on the Links page)
+   clips with an ellipsis instead of stretching the row -- title attr
+   on the same element carries the full value for hover. inline-block +
+   max-width (not just overflow/ellipsis on the <td> itself) so it clips
+   correctly even in a plain auto-layout table, no table-layout:fixed
+   needed. */
+.ellipsis-cell {
+  display: inline-block;
+  max-width: min(50vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+table.data-table tbody tr.queue-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* -- customizable tables (Movies/Series) --------------------------------
+   table-layout:fixed makes each <col>'s width (set from JS, per-column,
+   persisted) authoritative -- without it the browser ignores <colgroup>
+   widths and sizes columns from content instead, which is what resizing
+   is supposed to override. Cell text clips with an ellipsis instead of
+   wrapping/overflowing when a column's narrower than its content;
+   actions/select are exempt since those hold controls, not text. */
+.data-table-custom {
+  table-layout: fixed;
+}
+
+.data-table-custom td,
+.data-table-custom th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-table-custom .q-actions-cell,
+.data-table-custom .q-select-cell {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.col-th {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  padding-right: 18px !important;
+}
+
+.col-th:hover {
+  color: var(--text);
+}
+
+.col-th.drag-over {
+  background: var(--surface-hover);
+}
+
+.col-th .sort-indicator {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--brand);
+  font-size: 18px;
+}
+
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 2;
+}
+
+.col-resize-handle:hover,
+.col-resize-handle.resizing {
+  background: var(--brand);
+  opacity: 0.5;
+}
+
+.column-picker-wrap {
+  position: relative;
+}
+
+.column-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1000;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  min-width: 190px;
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.column-picker label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.column-picker label:hover {
+  background: var(--surface-hover);
+}
+
+.column-picker input[type="checkbox"] {
+  flex-shrink: 0;
+}
+
+/* -- Movies/Series grid view --------------------------------------------
+   Alternative to the table (toggled per page, persisted) -- same
+   underlying filtered/sorted/selected data, just laid out as poster
+   cards instead of rows. Posters are lazy: each card starts with a
+   text fallback and only calls out to TMDB (via the existing /api/tmdb/
+   search lookup, cached client-side) once it actually scrolls into
+   view, so a library of thousands never fires thousands of lookups at
+   once -- see wireLazyPoster()/resolvePoster() in app.js. */
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+  gap: 10px;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover td {
+  background: var(--surface-hover);
+}
+
+.media-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.media-card.clickable-card {
+  cursor: pointer;
+  transition: opacity 0.15s ease, outline-color 0.15s ease;
+}
+
+.media-card.clickable-card:hover {
+  outline: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.media-card.selected {
+  outline: 2px solid var(--brand) !important;
+  outline-offset: -2px;
+}
+
+.media-card-poster {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: var(--toolbar);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+}
+
+.media-card-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 0;
+}
+
+.media-card-poster-fallback {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 6px;
+  line-height: 1.25;
+}
+
+.media-card-select {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 2;
+}
+
+.media-card-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+  padding: 1px 5px;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 0.68rem;
+}
+
+.media-card-body {
+  padding: 6px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.media-card-title {
+  font-size: 0.78rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-card-status {
+  font-size: 0.68rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-card-meta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.media-card-actions {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding-top: 4px;
+}
+
+.media-grid-empty {
+  grid-column: 1 / -1;
+}
+
+.q-title {
+  font-weight: 500;
+}
+
+.q-meta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.q-type-tag {
+  font-size: 0.68rem;
+  padding: 1px 8px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.q-type-tag.bg {
+  background: transparent;
+  color: var(--text-disabled);
+}
+
+.q-progress-cell {
+  min-width: 170px;
+}
+
+.q-progress-cell .progress-bar {
+  margin: 4px 0 3px;
+}
+
+.q-progress-text {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.q-actions-cell {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.q-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.q-actions .btn {
+  padding: 0 4px;
+  font-size: 0.76rem;
+  min-height: 22px;
+  background: transparent;
+  color: #fff;
+}
+
+.q-actions .btn-icon {
+  width: auto;
+  min-width: 22px;
+  padding: 0 2px;
+  font-size: 1.1rem;
+  background: transparent;
+  color: #fff;
+}
+
+/* -- progress bars ------------------------------------------------------------ */
+.progress-bar {
+  height: 6px;
+  border-radius: var(--radius);
+  background: #151515;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--primary);
+  transition: width 0.4s ease;
+}
+
+.progress-fill.is-done {
+  background: var(--success-bright);
+}
+
+.progress-fill.is-error {
+  background: var(--danger);
+}
+
+.progress-fill.is-indeterminate {
+  width: 35% !important;
+  animation: indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% {
+    margin-left: -35%;
+  }
+
+  100% {
+    margin-left: 100%;
+  }
+}
+
+/* -- media detail (Movies/Series) --------------------------------------------- */
+/* A TMDB backdrop behind the title/overview instead of a small cover
+   thumbnail beside them -- background-image is set inline per-title
+   (see renderMediaDetail() in app.js), this just owns the box/scrim/
+   text layout. .no-image (no backdrop -- no TMDB match/key) falls back
+   to a plain gradient instead of an empty box. */
+.media-detail-hero {
+  position: relative;
+  min-height: 260px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background-color: var(--input-bg);
+  background-size: cover;
+  background-position: center 20%;
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+
+.media-detail-hero.no-image {
+  background-image: linear-gradient(135deg, var(--surface), var(--input-bg)) !important;
+}
+
+.media-detail-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(32, 32, 32, 0) 0%, rgba(32, 32, 32, 0.55) 50%, var(--bg) 100%);
+}
+
+.media-detail-hero-content {
+  position: relative;
+  padding: 24px;
+  max-width: 720px;
+}
+
+.media-detail-hero-content h2 {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.media-detail-hero-content .hint {
+  margin: 4px 0;
+  color: #fff;
+}
+
+#media-detail-meta {
+  opacity: 0.85;
+}
+
+#media-detail-overview {
+  opacity: 0.85;
+  max-width: 640px;
+}
+
+/* The folder-name (path) row -- view mode shows the current
+   "Category/Title (Year)" id as text with an Edit pencil; edit mode
+   swaps the text for an input plus Save/Cancel, editing just the
+   folder-name segment (the category prefix stays fixed, shown as a
+   static label so it's clear renaming never moves a title between
+   Movies/Series). See wireMediaDetailPathEdit() in app.js. */
+.media-detail-path {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  font-size: 0.85rem;
+}
+
+.media-detail-path-label {
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.media-detail-path-text {
+  opacity: 0.85;
+  overflow-wrap: anywhere;
+}
+
+#media-detail-path-input {
+  min-width: 220px;
+  max-width: 360px;
+  height: 26px;
+  padding: 2px 8px;
+  font-size: 0.85rem;
+}
+
+/* Each season is a native <details>/<summary> -- free keyboard/
+   accessibility support, no expand/collapse state machine needed (see
+   app.js's per-season localStorage override on top of the "highest
+   season starts open" default). */
+.season-block {
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.season-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.season-header::-webkit-details-marker {
+  display: none;
+}
+
+.season-header .material-symbols-outlined.season-caret {
+  transition: transform 0.15s ease;
+  font-size: 1.2rem;
+}
+
+.season-block[open] .season-caret {
+  transform: rotate(90deg);
+}
+
+.season-header-label {
+  flex: 1;
+}
+
+.season-header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* -- global search results (searches the existing library, not TMDB) --------- */
+.search-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.search-result-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.search-result-row:hover {
+  background: var(--surface-hover);
+}
+
+.search-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-result-title {
+  font-weight: 500;
+  font-size: 0.86rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-meta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+/* -- review list (Add page) --------------------------------------------------- */
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.review-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+
+.review-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.review-fields input[type="text"] {
+  width: auto;
+  min-width: 160px;
+  flex: 1;
+  margin-top: 0;
+}
+
+.review-fields input[type="number"] {
+  width: 80px;
+  margin-top: 0;
+}
+
+.review-fields select {
+  width: auto;
+  margin-top: 0;
+}
+
+.review-meta {
+  flex-basis: 100%;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.review-badge {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.review-badge.tmdb {
+  background: #163d27;
+  color: var(--success-bright);
+}
+
+.review-badge.heuristic {
+  background: #4a3b16;
+  color: var(--warning);
+}
+
+/* -- log output --------------------------------------------------------------- */
+.task-log {
+  margin-top: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #141414;
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.74rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-detail-log {
+  max-height: none;
+  min-height: 400px;
+  color: #fff;
+}
+
+/* -- login page ---------------------------------------------------------------- */
+.login-main {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--bg);
+}
+
+.login-panel {
+  width: 100%;
+  max-width: 320px;
+}
+
+.login-title {
+  margin: 0 0 2px;
+  display: flex;
+  align-items: center;
+}
+
+.login-title .brand-logo {
+  height: 36px;
+}
+
+.login-error {
+  background: #4a2020;
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  margin: 10px 0 0;
+}
+
+/* -- misc ------------------------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-hover);
+  border-radius: 5px;
+}
+
+/* -- mobile responsive ------------------------------------------------------ */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 230px;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--sidebar);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 99;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .sidebar-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .header {
+    padding: 0 12px;
+    gap: 10px;
+  }
+
+  .header-left {
+    gap: 24px;
+  }
+
+  .header-search {
+    max-width: 200px;
+  }
+
+  .toolbar {
+    padding: 6px 12px;
+  }
+
+  .content {
+    padding: 14px 12px;
+  }
+
+  .setting-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .setting-label {
+    width: 100%;
+  }
+
+  .setting-control {
+    width: 100%;
+    max-width: none;
+  }
+}
