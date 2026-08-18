@@ -394,9 +394,39 @@ def remove_link(item_id):
 # --------------------------------------------------------------------------
 # Tasks API
 # --------------------------------------------------------------------------
+def _attach_episode_info(tasks: list) -> list:
+    """Stamps a download task with the episode it's actually working on --
+    {"season","episode","name","still_path"} -- so Activity/Downloads can
+    show a thumbnail + "S02E05 - Name" instead of a bare filename (see
+    static/app.js's buildRowDescriptor). Best-effort throughout: no tmdb_id
+    on the task (never confirmed via Analyze), no TMDB key configured, an
+    un-parseable rel_path, or a TMDB miss all just leave the task without
+    one -- the row falls back to its plain title. tmdb_episodes.
+    get_episode_info() reuses its own cache, so this costs a fresh TMDB
+    call only the first time a given show's episode data is needed, not
+    on every poll of this route."""
+    settings = store.get_settings()
+    tmdb = classify.TMDBClient(settings.get("tmdb_api_key", ""))
+    if not tmdb.available:
+        return tasks
+    for t in tasks:
+        if t.get("task_type") != "download" or not t.get("tmdb_id"):
+            continue
+        items = t.get("items") or []
+        if not items:
+            continue
+        season, episode = media_library.parse_rel_path_season_episode(items[0].get("rel_path", ""))
+        if episode is None:
+            continue
+        info = tmdb_episodes.get_episode_info(tmdb, t["tmdb_id"], season, episode)
+        if info:
+            t["episode"] = {"season": season, "episode": episode, "name": info.get("name"), "still_path": info.get("still_path")}
+    return tasks
+
+
 @app.route("/api/tasks", methods=["GET"])
 def list_tasks():
-    return jsonify(manager.list_tasks())
+    return jsonify(_attach_episode_info(manager.list_tasks()))
 
 
 @app.route("/api/tasks/queue_status", methods=["GET"])
@@ -717,7 +747,7 @@ def get_media_detail_route(media_id):
                     "season": s["season"],
                     "label": s["label"],
                     "episodes": [
-                        {"episode_number": ep.get("episode"), "name": None, "air_date": None, "on_disk": ep}
+                        {"episode_number": ep.get("episode"), "name": None, "air_date": None, "still_path": None, "on_disk": ep}
                         for ep in s["episodes"]
                     ],
                 }

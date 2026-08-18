@@ -828,7 +828,22 @@
         ? (d.status === "running" ? "Downloading" : fmtStatus(d.status))
         : (d.status === "running" && d.phase ? `${fmtStatus(d.status)} · ${d.phase}` : fmtStatus(d.status));
       const catLabel = d.category ? (CATEGORY_LABELS[d.category] || d.category) : "";
-      const meta = [catLabel, `share: ${d.share_key}`].filter(Boolean).join(" · ");
+      let title = d.target_path;
+      let meta = [catLabel, `share: ${d.share_key}`].filter(Boolean).join(" · ");
+      // A download task carries `episode` (season/episode/name/still_path)
+      // once app.py's _attach_episode_info() has matched its file against
+      // TMDB -- when it's there, swap the raw folder path + "category ·
+      // share" line for the show's own title and an "S02E05 · Episode
+      // Name" line, and surface the still image for renderQueueRow to
+      // show as a thumbnail. Falls back to the plain path/meta above for
+      // movies, unconfirmed titles, or a TMDB miss.
+      let thumbUrl = null;
+      if (isDownload && d.episode) {
+        const se = `S${String(d.episode.season).padStart(2, "0")}E${String(d.episode.episode).padStart(2, "0")}`;
+        title = d.detected_title ? `${d.detected_title}${d.detected_year ? ` (${d.detected_year})` : ""}` : d.target_path;
+        meta = [se, d.episode.name].filter(Boolean).join(" · ");
+        if (d.episode.still_path) thumbUrl = `https://image.tmdb.org/t/p/w185${d.episode.still_path}`; // TMDB still, same w185 size the Movies/Series grid posters use
+      }
 
       const total = d.total_items || 0;
       const done = d.files_written || 0;
@@ -932,7 +947,7 @@
 
       return {
         key: taskKey, status: d.status, statusLabel: label,
-        title: d.target_path, meta, typeLabel: isDownload ? "Download" : "Export", isBackground: false, selectable: true,
+        title, meta, thumbUrl, typeLabel: isDownload ? "Download" : "Export", isBackground: false, selectable: true,
         progressPct, progressText, actions: rowActions, logLines: d.log || [],
       };
     }
@@ -1082,6 +1097,15 @@
 
     mainRow.querySelector(".q-title").textContent = descriptor.title;
     mainRow.querySelector(".q-meta").textContent = descriptor.meta;
+    const thumb = mainRow.querySelector(".q-thumb");
+    if (descriptor.thumbUrl) {
+      thumb.src = descriptor.thumbUrl;
+      thumb.alt = descriptor.title;
+      thumb.classList.remove("hidden");
+    } else {
+      thumb.removeAttribute("src");
+      thumb.classList.add("hidden");
+    }
 
     const typeTag = mainRow.querySelector(".q-type-tag");
     typeTag.textContent = descriptor.typeLabel;
