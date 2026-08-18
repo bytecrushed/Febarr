@@ -1174,6 +1174,34 @@ table.data-table tbody tr.queue-row:hover {
   grid-column: 1 / -1;
 }
 
+/* A queue row's title cell -- plain text normally, or a thumbnail
+   (an episode's TMDB still, see buildRowDescriptor's thumbUrl) beside
+   the title/meta stack when there is one. The image itself stays
+   collapsed (`.hidden`, a global utility) for every row that doesn't
+   have one, so a table with only a few thumbnailed rows doesn't leave
+   a ragged gap on the rest. */
+.q-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 0;
+}
+
+.q-thumb {
+  width: 68px;
+  height: 38px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--toolbar);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.q-item-text {
+  min-width: 0;
+}
+
 .q-title {
   font-weight: 500;
 }

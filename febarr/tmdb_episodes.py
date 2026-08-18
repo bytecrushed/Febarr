@@ -60,6 +60,7 @@ def _fetch_raw_groupings(tmdb, tmdb_id) -> list:
                 "episode_number": ep.get("episode_number"),
                 "name": ep.get("name"),
                 "air_date": ep.get("air_date"),
+                "still_path": ep.get("still_path"),
                 "order": order,
             })
             order += 1
@@ -79,6 +80,7 @@ def _fetch_raw_groupings(tmdb, tmdb_id) -> list:
                     "episode_number": ep.get("episode_number"),
                     "name": ep.get("name"),
                     "air_date": ep.get("air_date"),
+                    "still_path": ep.get("still_path"),
                     "order": order,
                 })
                 order += 1
@@ -144,6 +146,27 @@ def _score_grouping(grouping: dict, disk_pairs: list) -> int:
     return sum(1 for key in targets if key in valid_keys)
 
 
+def get_episode_info(tmdb, tmdb_id, season_number, episode_number) -> dict:
+    """A single episode's {"name", "still_path"} for display -- app.py's
+    /api/tasks route uses this to show a thumbnail + episode title on a
+    download task's Activity/Downloads row instead of a bare filename.
+    Deliberately just the default aired-order grouping (no disk-file
+    scoring against alternates -- there's no disk_seasons to score here,
+    just a (season, episode) already parsed from the task's own item
+    rel_path), and it reuses _get_groupings()'s cache, so this never
+    costs an extra TMDB call beyond whatever the media detail page (or an
+    earlier task row) already triggered for this show. None when TMDB is
+    unavailable, the show has no episode data, or no episode in the
+    default grouping matches this (season, episode)."""
+    groupings = _get_groupings(tmdb, tmdb_id)
+    if not groupings:
+        return None
+    for ep in groupings[0]["episodes"]:
+        if ep["season_number"] == season_number and ep["episode_number"] == episode_number:
+            return {"name": ep.get("name"), "still_path": ep.get("still_path")}
+    return None
+
+
 def get_reconciled_seasons(tmdb, tmdb_id, disk_seasons: list, force_refresh: bool = False):
     """
     Returns the same [{"season","label","episodes":[...]}] shape
@@ -186,6 +209,7 @@ def get_reconciled_seasons(tmdb, tmdb_id, disk_seasons: list, force_refresh: boo
             "episode_number": ep["episode_number"],
             "name": ep.get("name"),
             "air_date": ep.get("air_date"),
+            "still_path": ep.get("still_path"),
             "on_disk": disk_ep,
         })
 
@@ -201,6 +225,7 @@ def get_reconciled_seasons(tmdb, tmdb_id, disk_seasons: list, force_refresh: boo
             "episode_number": episode_num,
             "name": None,
             "air_date": None,
+            "still_path": None,
             "on_disk": disk_ep,
         })
 
