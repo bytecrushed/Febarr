@@ -805,44 +805,47 @@ def delete_media_file_route(media_id):
 # routes' only job is finding the right source items (the finished
 # export task's own item list, filtered down to what's still actually a
 # .strm right now -- media_library.build_download_items()) and hitting
-# "go". A single, shared helper builds the task either way (whole title
+# "go". A single, shared helper builds the tasks either way (whole title
 # or one file), the two routes just differ in which items they pass.
 #
-# If a download task is already queued/running for this title, this adds
-# the new items onto it (tasks.TaskManager.add_download_items()) instead
-# of rejecting the request -- that's what lets someone keep queuing more
-# episodes/files while an earlier download for the same title is still
-# going, rather than having to wait for it to finish first.
+# One task per file, not one task for the whole batch -- so Activity/
+# Downloads shows each file as its own queue entry with its own progress
+# bar instead of one merged row, and so nothing needs to be blocked or
+# merged when another download for the same title is already queued/
+# running: this just adds more (single-item) tasks alongside it.
 # --------------------------------------------------------------------------
-def _start_download(media_id: str, items: list):
-    existing_task = _find_task(media_id, "download", {"queued", "running"})
-    if existing_task is not None:
-        if not items:
-            return None, ("nothing left to download", 400), None
-        try:
-            task = manager.add_download_items(existing_task["id"], items)
-        except ValueError as e:
-            return None, (str(e), 400), None
-        return task, None, 200
+def _start_downloads(media_id: str, items: list):
+    if not items:
+        return [], ("nothing left to download", 400)
     source_task = _find_task(media_id, "export", {"done", "running"})
     if source_task is None:
-        return None, ("no export found for this title -- nothing to download from", 400), None
-    if not items:
-        return None, ("nothing left to download", 400), None
+        return [], ("no export found for this title -- nothing to download from", 400)
     category, title, year = media_library.category_title_year_from_target_path(media_id)
-    try:
-        task = manager.create_download_task(
-            share_link=source_task["share_link"],
-            target_path=media_id,
-            items=items,
-            category=category,
-            title=title,
-            year=year,
-            tmdb_id=source_task.get("tmdb_id"),
-        )
-    except ValueError as e:
-        return None, (str(e), 400), None
-    return task, None, 201
+    tasks = []
+    for item in items:
+        try:
+            tasks.append(manager.create_download_task(
+                share_link=source_task["share_link"],
+                target_path=media_id,
+                items=[item],
+                category=category,
+                title=title,
+                year=year,
+                tmdb_id=source_task.get("tmdb_id"),
+            ))
+        except ValueError as e:
+            return tasks, (str(e), 400)
+    return tasks, None
+
+
+def _chrono_sort_key(item: dict):
+    """(season, episode) ascending, so a multi-episode Download queues
+    oldest-first instead of whatever order the source list happened to be
+    in (FebBox's own file listing tends to come back newest-first).
+    Episode-less items (specials, movies) sort after numbered ones within
+    their season, by filename."""
+    season, episode = media_library.parse_rel_path_season_episode(item["rel_path"])
+    return (season, episode if episode is not None else float("inf"), item["rel_path"])
 
 
 @app.route("/api/media/<path:media_id>/download", methods=["POST"])
@@ -865,10 +868,11 @@ def download_media_route(media_id):
         except ValueError:
             return jsonify({"error": "season must be a whole number"}), 400
         items = [it for it in items if media_library.parse_rel_path_season_episode(it["rel_path"])[0] == season_num]
-    task, error, status = _start_download(media_id, items)
-    if error is not None:
+    items.sort(key=_chrono_sort_key)
+    tasks, error = _start_downloads(media_id, items)
+    if error is not None and not tasks:
         return jsonify({"error": error[0]}), error[1]
-    return jsonify(task), status
+    return jsonify(tasks), 201
 
 
 @app.route("/api/media/<path:media_id>/file/download", methods=["POST"])
@@ -884,10 +888,10 @@ def download_media_file_route(media_id):
         settings.get("export_root", ""), media_id, source_task.get("items", []) if source_task else []
     )
     items = [it for it in items if it["rel_path"] == file_rel_path]
-    task, error, status = _start_download(media_id, items)
-    if error is not None:
+    tasks, error = _start_downloads(media_id, items)
+    if error is not None and not tasks:
         return jsonify({"error": error[0]}), error[1]
-    return jsonify(task), status
+    return jsonify(tasks), 201
 
 
 @app.route("/api/media/<path:media_id>/file/revert", methods=["POST"])
