@@ -2531,14 +2531,15 @@
   // sidecar core.write_link_sidecar recorded -- see core.
   // revert_link_to_stream) -- either way alongside the existing Remove.
   // Icon-only buttons, same ACTION_ICONS/mountActionButtons convention
-  // every other action button in the app already uses. Download is
-  // disabled while a download task is already active for this title
-  // (downloadTaskActive) so the same file can't be queued twice; Remove
-  // stays available either way. `f` is an on-disk file dict
-  // (filename/rel_path/downloaded) -- either a movie file or one
-  // episode's `on_disk` (see renderSeasonBlock; never called for an
-  // episode with no on_disk at all -- nothing to act on).
-  function buildFileActionsCell(f, downloadTaskActive) {
+  // every other action button in the app already uses. Download stays
+  // enabled even while a download task is already active for this title --
+  // the server merges the new file onto that in-flight task instead of
+  // rejecting it (app.py's _start_download), so this just keeps adding to
+  // the queue. `f` is an on-disk file dict (filename/rel_path/downloaded)
+  // -- either a movie file or one episode's `on_disk` (see
+  // renderSeasonBlock; never called for an episode with no on_disk at
+  // all -- nothing to act on).
+  function buildFileActionsCell(f) {
     const actionsTd = document.createElement("td");
     actionsTd.className = "q-actions-cell";
     const row = document.createElement("div");
@@ -2549,8 +2550,7 @@
       actions.push({ label: "Revert to stream", cls: "btn-ghost", onClick: () => revertMediaFile(f.rel_path) });
     } else {
       actions.push({
-        label: "Download", cls: "btn-primary", disabled: downloadTaskActive,
-        title: downloadTaskActive ? "A download is already in progress for this title" : "Download",
+        label: "Download", cls: "btn-primary",
         onClick: () => downloadMediaFile(f.rel_path),
       });
     }
@@ -2643,7 +2643,7 @@
     return `febarr-season-open-${mediaId}-${seasonNum}`;
   }
 
-  function renderSeasonBlock(mediaId, season, maxSeasonNum, downloadTaskActive) {
+  function renderSeasonBlock(mediaId, season, maxSeasonNum) {
     const block = document.createElement("details");
     block.className = "season-block";
     const storageKey = seasonOpenStorageKey(mediaId, season.season);
@@ -2673,11 +2673,12 @@
       // Season-level "Download all" -- one task covering every
       // streamable file in this season (see app.py's
       // download_media_route ?season=N), not a client-side loop over
-      // the single-file endpoint (which 400s a second call while one
-      // download task is already active for the title).
+      // the single-file endpoint. Stays enabled even while a download
+      // task is already active for the title -- the server merges this
+      // season's files onto it instead of rejecting the request.
       mountActionButtons(actionsWrap, [{
-        label: "Download", cls: "btn-primary", disabled: downloadTaskActive,
-        title: downloadTaskActive ? "A download is already in progress for this title" : `Download all of ${season.label}`,
+        label: "Download", cls: "btn-primary",
+        title: `Download all of ${season.label}`,
         onClick: async () => {
           await api(`/api/media/${mediaIdToUrl(mediaId)}/download?season=${season.season}`, { method: "POST" });
           await loadMediaDetail(mediaId);
@@ -2718,7 +2719,7 @@
       tr.appendChild(nameTd);
       tr.appendChild(dateTd);
       tr.appendChild(statusTd);
-      tr.appendChild(ep.on_disk ? buildFileActionsCell(ep.on_disk, downloadTaskActive) : document.createElement("td"));
+      tr.appendChild(ep.on_disk ? buildFileActionsCell(ep.on_disk) : document.createElement("td"));
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
@@ -2787,7 +2788,6 @@
     mediaDetailOverview.textContent = (meta && meta.overview) || "";
 
     renderDownloadTaskPanel(detail.download_task);
-    const downloadTaskActive = !!detail.download_task;
 
     mediaDetailSeasons.innerHTML = "";
     mediaDetailFiles.innerHTML = "";
@@ -2795,7 +2795,7 @@
     if (detail.is_series) {
       const maxSeasonNum = detail.seasons.length ? Math.max(...detail.seasons.map((s) => s.season)) : null;
       for (const season of detail.seasons) {
-        mediaDetailSeasons.appendChild(renderSeasonBlock(detail.id, season, maxSeasonNum, downloadTaskActive));
+        mediaDetailSeasons.appendChild(renderSeasonBlock(detail.id, season, maxSeasonNum));
       }
     } else {
       const table = document.createElement("table");
@@ -2812,7 +2812,7 @@
         statusTd.appendChild(statusBadge);
         tr.appendChild(nameTd);
         tr.appendChild(statusTd);
-        tr.appendChild(buildFileActionsCell(f, downloadTaskActive));
+        tr.appendChild(buildFileActionsCell(f));
         tbody.appendChild(tr);
       }
       table.appendChild(tbody);

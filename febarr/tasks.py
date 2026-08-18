@@ -830,6 +830,35 @@ class TaskManager:
         self._upsert_items(task["id"], items)
         return self.get_task(task["id"])
 
+    def add_download_items(self, task_id: str, items: list) -> dict:
+        """Appends more files onto an already queued/running download task
+        instead of making the caller wait for it to finish -- app.py's
+        download routes call this (rather than create_download_task) once
+        _find_task() has found an in-flight download for the title, which
+        is what lets someone keep queuing more episodes/files while a
+        download is already under way.
+
+        Safe for both statuses: a queued task hasn't called ctx.get_items()
+        yet, so the new items are just there when it starts; a running one
+        is inside download_items()'s poll loop (see core.py), which
+        re-reads ctx.get_items() between files specifically so items
+        appended here get picked up without waiting for the current run to
+        finish and get requeued. _upsert_items() dedupes by fid, so
+        re-submitting a file already on the task's list is a harmless
+        no-op rather than a duplicate entry."""
+        if not items:
+            raise ValueError("items is required")
+        with self._lock:
+            task = self._records.get(task_id)
+            if task is None:
+                raise ValueError("task not found")
+            if task.get("task_type") != "download":
+                raise ValueError("task is not a download task")
+            if task["status"] not in ("queued", "running"):
+                raise ValueError("task is no longer active")
+        self._upsert_items(task_id, items)
+        return self.get_task(task_id)
+
     def cancel_task(self, task_id: str) -> dict:
         """Stops a queued or running task -- the one and only "soft" stop
         action (Activity keeps it; Movies/Series has it too now, for

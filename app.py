@@ -807,13 +807,28 @@ def delete_media_file_route(media_id):
 # .strm right now -- media_library.build_download_items()) and hitting
 # "go". A single, shared helper builds the task either way (whole title
 # or one file), the two routes just differ in which items they pass.
+#
+# If a download task is already queued/running for this title, this adds
+# the new items onto it (tasks.TaskManager.add_download_items()) instead
+# of rejecting the request -- that's what lets someone keep queuing more
+# episodes/files while an earlier download for the same title is still
+# going, rather than having to wait for it to finish first.
 # --------------------------------------------------------------------------
 def _start_download(media_id: str, items: list):
+    existing_task = _find_task(media_id, "download", {"queued", "running"})
+    if existing_task is not None:
+        if not items:
+            return None, ("nothing left to download", 400), None
+        try:
+            task = manager.add_download_items(existing_task["id"], items)
+        except ValueError as e:
+            return None, (str(e), 400), None
+        return task, None, 200
     source_task = _find_task(media_id, "export", {"done", "running"})
     if source_task is None:
-        return None, ("no export found for this title -- nothing to download from", 400)
+        return None, ("no export found for this title -- nothing to download from", 400), None
     if not items:
-        return None, ("nothing left to download", 400)
+        return None, ("nothing left to download", 400), None
     category, title, year = media_library.category_title_year_from_target_path(media_id)
     try:
         task = manager.create_download_task(
@@ -826,8 +841,8 @@ def _start_download(media_id: str, items: list):
             tmdb_id=source_task.get("tmdb_id"),
         )
     except ValueError as e:
-        return None, (str(e), 400)
-    return task, None
+        return None, (str(e), 400), None
+    return task, None, 201
 
 
 @app.route("/api/media/<path:media_id>/download", methods=["POST"])
@@ -839,8 +854,6 @@ def download_media_route(media_id):
     breakdown itself is built -- see media_library.
     parse_rel_path_season_episode()."""
     settings = store.get_settings()
-    if _find_task(media_id, "download", {"queued", "running"}) is not None:
-        return jsonify({"error": "a download is already in progress for this title"}), 400
     source_task = _find_task(media_id, "export", {"done", "running"})
     items = media_library.build_download_items(
         settings.get("export_root", ""), media_id, source_task.get("items", []) if source_task else []
@@ -852,10 +865,10 @@ def download_media_route(media_id):
         except ValueError:
             return jsonify({"error": "season must be a whole number"}), 400
         items = [it for it in items if media_library.parse_rel_path_season_episode(it["rel_path"])[0] == season_num]
-    task, error = _start_download(media_id, items)
+    task, error, status = _start_download(media_id, items)
     if error is not None:
         return jsonify({"error": error[0]}), error[1]
-    return jsonify(task), 201
+    return jsonify(task), status
 
 
 @app.route("/api/media/<path:media_id>/file/download", methods=["POST"])
@@ -866,17 +879,15 @@ def download_media_file_route(media_id):
     if not file_rel_path:
         return jsonify({"error": "path is required"}), 400
     settings = store.get_settings()
-    if _find_task(media_id, "download", {"queued", "running"}) is not None:
-        return jsonify({"error": "a download is already in progress for this title"}), 400
     source_task = _find_task(media_id, "export", {"done", "running"})
     items = media_library.build_download_items(
         settings.get("export_root", ""), media_id, source_task.get("items", []) if source_task else []
     )
     items = [it for it in items if it["rel_path"] == file_rel_path]
-    task, error = _start_download(media_id, items)
+    task, error, status = _start_download(media_id, items)
     if error is not None:
         return jsonify({"error": error[0]}), error[1]
-    return jsonify(task), 201
+    return jsonify(task), status
 
 
 @app.route("/api/media/<path:media_id>/file/revert", methods=["POST"])

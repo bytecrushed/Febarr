@@ -777,67 +777,78 @@ def download_items(
     request_timeout: int = 20,
     user_agent: str = None,
 ) -> None:
-    items = ctx.get_items()
-    for item in items:
-        ctx.check_cancelled()
-        if item.get("status") == "done":
-            continue  # already downloaded in a previous run -- resume skips it
+    # Polls ctx.get_items() instead of taking one snapshot up front, so a
+    # file appended to this task (tasks.TaskManager.add_download_items(),
+    # from app.py's download routes re-queuing onto an already-running
+    # download) gets picked up on the next lap rather than sitting pending
+    # until this run ends and the task gets requeued. `handled` tracks fids
+    # this call has already attempted -- including ones that errored --
+    # so a failed item isn't retried in a tight loop each lap; it just
+    # waits for the next resync/resume like before.
+    handled = set()
+    while True:
+        items = [it for it in ctx.get_items() if it["fid"] not in handled and it.get("status") != "done"]
+        if not items:
+            break
+        for item in items:
+            ctx.check_cancelled()
 
-        rel_path = item["rel_path"]
-        fid = item["fid"]
-        real_path = item["dest_path"]  # already the real, final path -- see write_link_sidecar()'s docstring
-        ctx.set_current(rel_path)
-        ctx.log(f"  - {rel_path}: requesting a fresh stream link...")
-        try:
-            links = api.get_links(share_key, fid)
-        except Cancelled:
-            raise
-        except Exception as e:
-            ctx.log(f"      failed to get link: {e}")
-            ctx.mark_item(fid, "error", error=str(e))
-            continue
+            rel_path = item["rel_path"]
+            fid = item["fid"]
+            real_path = item["dest_path"]  # already the real, final path -- see write_link_sidecar()'s docstring
+            handled.add(fid)
+            ctx.set_current(rel_path)
+            ctx.log(f"  - {rel_path}: requesting a fresh stream link...")
+            try:
+                links = api.get_links(share_key, fid)
+            except Cancelled:
+                raise
+            except Exception as e:
+                ctx.log(f"      failed to get link: {e}")
+                ctx.mark_item(fid, "error", error=str(e))
+                continue
 
-        if not links:
-            ctx.log("      no stream available, skipping")
-            ctx.mark_item(fid, "error", error="no stream available")
-            continue
+            if not links:
+                ctx.log("      no stream available, skipping")
+                ctx.mark_item(fid, "error", error="no stream available")
+                continue
 
-        url = links[0]["url"]
-        quality = links[0].get("quality", "")
+            url = links[0]["url"]
+            quality = links[0].get("quality", "")
 
-        def _on_progress(done, total, _fid=fid):
-            ctx.update_item_progress(_fid, done, total)
+            def _on_progress(done, total, _fid=fid):
+                ctx.update_item_progress(_fid, done, total)
 
-        ctx.log(f"      downloading to {real_path} ...")
-        try:
-            ensure_dir(os.path.dirname(real_path))
-            download_one_file(
-                url, real_path, ctx,
-                on_progress=_on_progress,
-                request_timeout=request_timeout,
-                user_agent=user_agent,
-            )
-        except Cancelled:
-            raise
-        except Exception as e:
-            ctx.log(f"      download failed: {e}")
-            ctx.mark_item(fid, "error", error=str(e))
-            continue
+            ctx.log(f"      downloading to {real_path} ...")
+            try:
+                ensure_dir(os.path.dirname(real_path))
+                download_one_file(
+                    url, real_path, ctx,
+                    on_progress=_on_progress,
+                    request_timeout=request_timeout,
+                    user_agent=user_agent,
+                )
+            except Cancelled:
+                raise
+            except Exception as e:
+                ctx.log(f"      download failed: {e}")
+                ctx.mark_item(fid, "error", error=str(e))
+                continue
 
-        write_link_sidecar(real_path, {
-            "fid": fid,
-            "share_key": share_key,
-            "share_link": share_link,
-            "url": url,
-            "quality": quality,
-            "downloaded_at": _now_iso(),
-        })
-        try:
-            os.remove(real_path + ".strm")
-        except OSError:
-            pass
-        ctx.log(f"      wrote {real_path}")
-        ctx.mark_item(fid, "done", quality=quality)
+            write_link_sidecar(real_path, {
+                "fid": fid,
+                "share_key": share_key,
+                "share_link": share_link,
+                "url": url,
+                "quality": quality,
+                "downloaded_at": _now_iso(),
+            })
+            try:
+                os.remove(real_path + ".strm")
+            except OSError:
+                pass
+            ctx.log(f"      wrote {real_path}")
+            ctx.mark_item(fid, "done", quality=quality)
 
 
 # --------------------------------------------------------------------------
