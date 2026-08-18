@@ -532,10 +532,16 @@ def tmdb_search():
 # list_media()) and folds in discovered items + active tasks on top (see
 # augment_with_pipeline()), plus delete/queue/dismiss/download operations.
 # --------------------------------------------------------------------------
-def _find_task(media_id: str, task_type: str = "export", statuses: set = None):
-    """Shared 'find the task record belonging to this title' lookup --
-    matched on target_path, which is exactly media_id already (the
-    convention compute_target_path()/list_media() both use)."""
+def _find_all_tasks(media_id: str, task_type: str = "export", statuses: set = None) -> list:
+    """Shared 'every task record belonging to this title' lookup -- matched
+    on target_path, which is exactly media_id already (the convention
+    compute_target_path()/list_media() both use). Now that a download
+    covering several files queues one task per file (see
+    _start_downloads()), a title can have several matching download tasks
+    at once, which is exactly what callers wanting per-file status (e.g.
+    get_media_detail_route's episode overlay) need this for -- _find_task()
+    below still picks just one, for callers that only want a single
+    glance."""
     norm_media_id = (media_id or "").replace("\\", "/").strip().lower()
     tasks = manager.list_tasks()
     matching = []
@@ -560,7 +566,17 @@ def _find_task(media_id: str, task_type: str = "export", statuses: set = None):
                     matching.append(t)
             except Exception:
                 pass
+    return matching
 
+
+def _find_task(media_id: str, task_type: str = "export", statuses: set = None):
+    """Picks the single most relevant task for this title out of
+    _find_all_tasks()'s matches -- done beats running beats queued beats
+    error beats cancelled, ties broken by whichever has more files
+    written. Fine for a single "what's this title's export doing" glance;
+    callers that need every matching task (a title can have several
+    download tasks at once now) should use _find_all_tasks() directly."""
+    matching = _find_all_tasks(media_id, task_type, statuses)
     if not matching:
         return None
     status_priority = {"done": 0, "running": 1, "queued": 2, "error": 3, "cancelled": 4}
@@ -621,8 +637,11 @@ def dismiss_discovered(item_id):
 def get_media_detail_route(media_id):
     settings = store.get_settings()
     source_task = _find_task(media_id, "export")
+    download_tasks = _find_all_tasks(media_id, "download", {"queued", "running", "error"})
     try:
-        detail = media_library.get_media_detail(settings.get("export_root", ""), media_id, task=source_task)
+        detail = media_library.get_media_detail(
+            settings.get("export_root", ""), media_id, task=source_task, download_tasks=download_tasks
+        )
     except (FileNotFoundError, ValueError):
         parts = (media_id or "").replace("\\", "/").split("/", 1)
         label = parts[0]

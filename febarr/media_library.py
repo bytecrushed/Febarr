@@ -318,11 +318,19 @@ def augment_with_pipeline(entries: list, discovered_items: list, tasks: list, me
     return entries
 
 
-def get_media_detail(export_root: str, media_id: str, task: dict = None) -> dict:
+def get_media_detail(export_root: str, media_id: str, task: dict = None, download_tasks: list = None) -> dict:
     """
     Full detail for one title: parsed title/year/category plus season/episode
     breakdown (series) or file list (movies) built from streamable items in
     JSON (task['items']) and downloaded files on disk.
+
+    `download_tasks` -- every queued/running/error download task for this
+    title (app.py's _find_all_tasks(); there can be several at once now
+    that a batch download queues one task per file, see app.py's
+    _start_downloads()) -- lets each not-yet-downloaded file below carry
+    its own live "download_status" (queued/running/error) instead of just
+    the on-disk downloaded/not-downloaded split, so an episode mid-
+    download shows that instead of a plain "Ready".
     """
     norm_media_id = (media_id or "").replace("\\", "/")
     parts = norm_media_id.split("/", 1)
@@ -347,6 +355,19 @@ def get_media_detail(export_root: str, media_id: str, task: dict = None) -> dict
         except ValueError:
             abs_dir = None
 
+    # rel_path -> the status ("queued"/"running"/"error") of whichever
+    # download task is working on it right now. A finished ("done") item
+    # is skipped even on an otherwise still-active task -- that file's
+    # already downloaded, nothing to show a queue status for.
+    download_status_by_path = {}
+    for dt in download_tasks or []:
+        for it in dt.get("items", []):
+            if it.get("status") == "done":
+                continue
+            rel = (it.get("rel_path") or "").replace("\\", "/")
+            if rel:
+                download_status_by_path[rel] = dt.get("status")
+
     seen_rel_paths = set()
     files = []
 
@@ -365,6 +386,7 @@ def get_media_detail(export_root: str, media_id: str, task: dict = None) -> dict
                 "filename": filename,
                 "rel_path": rel_path,
                 "downloaded": is_downloaded,
+                "download_status": None if is_downloaded else download_status_by_path.get(rel_path),
                 "url": it.get("url"),
                 "quality": it.get("quality", ""),
             })
@@ -379,6 +401,7 @@ def get_media_detail(export_root: str, media_id: str, task: dict = None) -> dict
                     "filename": os.path.basename(norm_rel),
                     "rel_path": norm_rel,
                     "downloaded": True,
+                    "download_status": None,
                     "url": None,
                     "quality": "",
                 })
@@ -402,6 +425,7 @@ def get_media_detail(export_root: str, media_id: str, task: dict = None) -> dict
                 "rel_path": f["rel_path"],
                 "episode": episode_num,
                 "downloaded": f["downloaded"],
+                "download_status": f.get("download_status"),
                 "url": f.get("url"),
                 "quality": f.get("quality", ""),
             })
