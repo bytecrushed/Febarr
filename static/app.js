@@ -2526,6 +2526,24 @@
     await loadMediaDetail(currentMediaId);
   }
 
+  // One file's status badge -- Missing (series only, no file at all),
+  // Downloaded, an in-flight download's own state (Queued/Downloading/
+  // Download error, from `f.download_status` -- see media_library.
+  // get_media_detail()'s download_status_by_path overlay), or plain
+  // Ready otherwise. Shared by the movie file table and the per-episode
+  // table below so both read the same live queue status instead of just
+  // Ready/Downloaded.
+  const FILE_STATUS_MAP = {
+    queued: ["download_queued", "Queued"],
+    running: ["downloading", "Downloading"],
+    error: ["download_error", "Download error"],
+  };
+  function fileStatusBadge(f) {
+    if (!f) return ["missing", "Missing"];
+    if (f.downloaded) return ["ready", "Downloaded"];
+    return FILE_STATUS_MAP[f.download_status] || ["queued", "Ready"];
+  }
+
   // One file row's actions cell: Download (still a .strm) or Revert to
   // stream (already downloaded, restores the .strm from the link
   // sidecar core.write_link_sidecar recorded -- see core.
@@ -2533,12 +2551,12 @@
   // Icon-only buttons, same ACTION_ICONS/mountActionButtons convention
   // every other action button in the app already uses. Download stays
   // enabled even while a download task is already active for this title --
-  // the server merges the new file onto that in-flight task instead of
-  // rejecting it (app.py's _start_download), so this just keeps adding to
-  // the queue. `f` is an on-disk file dict (filename/rel_path/downloaded)
-  // -- either a movie file or one episode's `on_disk` (see
-  // renderSeasonBlock; never called for an episode with no on_disk at
-  // all -- nothing to act on).
+  // the server just queues another (single-file) task alongside it
+  // instead of rejecting the request (app.py's _start_downloads), so this
+  // just keeps adding to the queue. `f` is an on-disk file dict
+  // (filename/rel_path/downloaded) -- either a movie file or one
+  // episode's `on_disk` (see renderSeasonBlock; never called for an
+  // episode with no on_disk at all -- nothing to act on).
   function buildFileActionsCell(f) {
     const actionsTd = document.createElement("td");
     actionsTd.className = "q-actions-cell";
@@ -2706,11 +2724,7 @@
       dateTd.textContent = ep.air_date || "";
       const statusTd = document.createElement("td");
       const statusBadge = document.createElement("span");
-      let statusKey = "missing", statusText = "Missing";
-      if (ep.on_disk) {
-        statusKey = ep.on_disk.downloaded ? "ready" : "queued";
-        statusText = ep.on_disk.downloaded ? "Downloaded" : "Ready";
-      }
+      const [statusKey, statusText] = fileStatusBadge(ep.on_disk);
       statusBadge.className = `status-badge status-${statusKey}`;
       statusBadge.textContent = statusText;
       statusTd.appendChild(statusBadge);
@@ -2807,8 +2821,9 @@
         nameTd.textContent = f.filename;
         const statusTd = document.createElement("td");
         const statusBadge = document.createElement("span");
-        statusBadge.className = `status-badge status-${f.downloaded ? "ready" : "queued"}`;
-        statusBadge.textContent = f.downloaded ? "Downloaded" : "Ready";
+        const [statusKey, statusText] = fileStatusBadge(f);
+        statusBadge.className = `status-badge status-${statusKey}`;
+        statusBadge.textContent = statusText;
         statusTd.appendChild(statusBadge);
         tr.appendChild(nameTd);
         tr.appendChild(statusTd);
